@@ -1,80 +1,83 @@
-from scipy.stats import norm
-from scipy.special import logsumexp
+from models.sv import SV
+from models.nl import NL
 import numpy as np
-from resampling import kl, systematic_resampling, tv
+from bpf import run_bpf
 import matplotlib.pyplot as plt
 
 
-def idx_to_pmf(idx, multiplicities, S):
-    pmf = np.zeros(S)
-    pmf[idx] = multiplicities / S
-    return pmf
+def plot_paths(particles, B):
+    X = np.zeros_like(particles)
+    indx = B[:, -1]
+    for t in reversed(range(1, T)):
+        X[:, t] = particles[indx, t]
+        indx = B[indx, t - 1]
+    X[:, 0] = particles[indx, 0]
+    for n in range(N):
+        plt.plot(X[n], color='Blue')
+    plt.plot(x, color='Red')
+    plt.show()
 
 
-def get_tv(idx, log_w_tilde, S):
-    unique_idx, multiplicities = np.unique(idx, return_counts=True)
-    return 0.5 * np.abs(np.exp(log_w_tilde[unique_idx]) - multiplicities / S).sum()
+T = 500
+N = 1000
+runs = 1
+model = SV()
+# model = NL()
 
+np.random.seed(2)
+data = [model.generateData(T) for _ in range(runs)]
 
-def get_elbo(idx, log_joint, S):
-    unique_idx, multiplicities = np.unique(idx, return_counts=True)
-    return (multiplicities / S) @ (log_joint[unique_idx] - np.log(multiplicities / S))
+# n_test = 100
+# test_x_set = np.zeros((n_test, T))
+# for i in range(n_test):
+#     test_x_set[i] = model.generateData(T)[0]
 
+# rs_list = ['kl', 'multinomial', 'systematic', 'stratified', 'tv', 'cubo']
+rs_list = ['kl', 'multinomial']
+(x, y) = data[0]
+truth_particles = 50000
+truth = run_bpf(y, truth_particles, model=model, resampling_scheme='multinomial', adaptive=False, beta=1)
+x_star = truth['particles']
+for rs in rs_list:
+    np.random.seed(0)
+    mse_filtering = []
+    mse_predictive = []
+    mse_smoothing = []
+    marg_log_likelihoods = []
+    elbos = []
 
-tv_elbos = []
-tv_tvs = []
+    for r in range(runs):
+        (x, y) = data[r]
+        out = run_bpf(y, N, model=model, resampling_scheme=rs, adaptive=False, beta=1)
+        x_star_filtering = out['filtering'][0, :]
+        x_star_predictive = out['predictions'][0, :]
+        mse_filtering.append(np.mean((x_star_filtering[:-1] - x[:-1]) ** 2))
+        mse_predictive.append((np.mean((x_star_predictive - x) ** 2)))
 
-kl_elbos = []
-kl_tvs = []
+        q = out['posterior']
+        paths = out['B']
+        particles = out['particles']
+        idx = np.arange(N)
+        idx_star = np.arange(truth_particles)
+        mse_s = 0
+        for t in reversed(range(T)):
+            mse_s += ((q @ particles[idx, t] - truth['posterior'] @ x_star[idx_star, t]) ** 2) / T
+            # mse_s += ((q @ particles[idx, t] - x[t]) ** 2) / T
+            idx = paths[idx, t]
+            idx_star = truth['B'][idx_star, t]
+        mse_smoothing.append(mse_s)
+        marg_log_likelihoods.append(out['marg_log_likelihood'])
+        elbos.append(out["elbo"])
+    plot_paths(particles, paths)
 
-systematic_elbos = []
-systematic_tvs = []
+    print('Resampling scheme: ', rs)
+    print("Filtering:", np.mean(mse_filtering))
+    print("Prediction:", np.mean(mse_predictive))
+    print("Avg. marg. log-likelihood:", np.mean(marg_log_likelihoods))
+    print("Avg. ELBOs: ", np.mean(elbos))
+    print("Avg. Smoothing:", np.mean(mse_smoothing))
+    print()
 
-np.random.seed(0)
-p = norm(0, 1.5)
-log_Z = norm(0, 0.001).logpdf(0)
-
-S_list = [50, 100, 500, 1000, 10000, 50000]
-for S in S_list:
-    x = np.random.normal(0, 10, S)
-    log_joint = p.logpdf(x)
-    log_w_tilde = log_joint - logsumexp(log_joint)
-
-    idx = kl(log_joint)
-    # q_ddot_kl = idx_to_pmf(unique_idx, multiplicities, S)
-    kl_elbos.append(get_elbo(idx, log_w_tilde, S))
-    kl_tvs.append(get_tv(idx, log_w_tilde, S))
-
-    idx = tv(np.exp(log_w_tilde))
-    tv_elbos.append(get_elbo(idx, log_w_tilde, S))
-    tv_tvs.append(get_tv(idx, log_w_tilde, S))
-
-    idx = systematic_resampling(np.exp(log_w_tilde))
-    systematic_elbos.append(get_elbo(idx, log_w_tilde, S))
-    systematic_tvs.append(get_tv(idx, log_w_tilde, S))
-
-plt.plot(tv_tvs, 'r')
-plt.plot(kl_tvs, 'b')
-plt.plot(systematic_tvs, 'm')
-plt.xticks(np.arange(len(S_list)), S_list)
-plt.ylabel('TV')
-plt.xlabel('$S$')
-plt.show()
-
-plt.plot(tv_elbos, 'r')
-plt.plot(kl_elbos, 'b')
-plt.plot(systematic_elbos, 'm')
-plt.xticks(np.arange(len(S_list)), S_list)
-plt.ylabel('ELBO')
-plt.xlabel('$S$')
-plt.show()
-
-"""
-ordered_idx = np.argsort(x)
-plt.plot(x[ordered_idx], np.exp(log_joint[ordered_idx]))
-plt.show()
-ordered_idx = np.argsort(x[idx])
-plt.plot(x[idx][ordered_idx], np.exp(log_joint[idx][ordered_idx]), 'r')
-plt.plot(x[idx][ordered_idx], q_ddot_kl[ordered_idx], 'b')
-plt.show()
-"""
+    # plt.plot(x_star, label=rs)
+# plt.legend()
+# plt.show()
