@@ -3,7 +3,7 @@ from models.nl import NL
 import numpy as np
 from bpf import run_bpf
 import matplotlib.pyplot as plt
-
+from tqdm import tqdm
 
 def plot_paths(particles, B):
     X = np.zeros_like(particles)
@@ -18,7 +18,7 @@ def plot_paths(particles, B):
     plt.show()
 
 
-T = 500
+T = 100
 N = 1000
 runs = 1
 model = SV()
@@ -53,14 +53,15 @@ for rs in rs_list:
         x_star_predictive = out['predictions'][0, :]
         mse_filtering.append(np.mean((x_star_filtering[:-1] - x[:-1]) ** 2))
         mse_predictive.append((np.mean((x_star_predictive - x) ** 2)))
-
+        # resampling weight = w_{t-1} * p(y_t | mean of p(x_t | x_{t-1}) )
+        # importance weight =  p(y_t | x_t ) / p(y_t | mean of p(x_t | x_{t-1}) )
         q = out['posterior']
         paths = out['B']
         particles = out['particles']
         idx = np.arange(N)
         idx_star = np.arange(truth_particles)
         mse_s = 0
-        for t in reversed(range(T)):
+        for t in tqdm(reversed(range(T))):
             mse_s += ((q @ particles[idx, t] - truth['posterior'] @ x_star[idx_star, t]) ** 2) / T
             # mse_s += ((q @ particles[idx, t] - x[t]) ** 2) / T
             idx = paths[idx, t]
