@@ -21,57 +21,58 @@ class Lorenz63:
     """
     The model parameters and pdf:s for the Lorenz 63 model. Default params from Wikipedia page
     """
-    def __init__(self, s=10,r=28,b=2.667):
+    def __init__(self, s=10,r=28,b=8/3, dt=0.02):
         # global stats
         self.s = s
         self.r = r
         self.b = b
-        self.dt = 1e-3 # needs to be small enough for the discretization to be accurate
+        self.dt = dt # needs to be small enough for the discretization to be accurate
         self.prior_mean = np.zeros(3)
         self.prior_cov = np.eye(3)
 
     def generateData(self, T):
 
-        observations = []
-
         # Latent state is three dimensional
 
-        xs = np.empty(T + 1)
-        ys = np.empty(T + 1)
-        zs = np.empty(T + 1)
+        xs = np.empty(T)
+        ys = np.empty(T)
+        zs = np.empty(T)
 
         # Set initial values
-        xs[0], ys[0], zs[0] = tuple(self.particle_0(N=1))
+        xs[0], ys[0], zs[0] = self.particle_0(N=1).T.squeeze()
+
+        observations = [xs[0] + npr.normal(0, 1)]
 
         # Step through "time", calculating the partial derivatives at the current point
         # and using them to estimate the next point
-        for i in range(T):
+        for i in range(T - 1):
             x_dot, y_dot, z_dot = lorenz_discretized(xs[i], ys[i], zs[i], self.s, self.r, self.b)
             xs[i + 1] = xs[i] + (x_dot * self.dt) + npr.randn()
             ys[i + 1] = ys[i] + (y_dot * self.dt) + npr.randn()
             zs[i + 1] = zs[i] + (z_dot * self.dt) + npr.randn()
 
-            observations.append(xs[i + 1] + npr.normal(0, 1)) # We observe only the first coordinate !
+            observations.append(xs[i + 1] + npr.normal(0, 1))  # We observe only the first coordinate !
 
-        latent_states = np.vstack((xs, ys, zs)).T
+        latent_states = np.vstack((xs, ys, zs))
         observations = np.asarray(observations)
 
         return latent_states, observations
 
     def particle_0(self, N):
-        return npr.multivariate_normal(self.prior_mean, self.prior_cov, size=N)
+        # return npr.multivariate_normal(self.prior_mean, self.prior_cov, size=N)
+        return npr.normal(0, 1, size=(N, 3))
 
     def propagate(self, x):
-        return x + npr.normal(size=x.size)
+        return x + npr.normal(size=x.shape)
 
     def log_g(self, x, y):
         return stats.norm.logpdf(x=y, loc=x, scale=1)
 
     def log_f(self, x_current, x_previous):
         if x_previous is not None:
-            log_prior = stats.norm.logpdf(x_current, loc=x_previous, scale=1)
+            log_prior = stats.norm.logpdf(x_current, loc=x_previous, scale=1).sum(-1)
         else:
-            log_prior = stats.norm.logpdf(x_current, loc=0, scale=1)
+            log_prior = stats.norm.logpdf(x_current, loc=0, scale=1).sum(-1)
         return log_prior
 
     def log_joint(self, x_current, x_previous, y):

@@ -22,21 +22,24 @@ class NL:
             x[t] = x[t - 1]/2 + 25 * x[t - 1]/(1 + x[t - 1]**2) + 8 * np.cos(1.2 * t) + np.random.normal(size=1)
             y[t] = x[t]**2/20 + np.random.normal(size=1) * np.sqrt(10)
 
-        return x, y
+        return x.reshape((1, -1)), y
 
     def particle_0(self, N):
-        return np.random.normal(size=N)
+        return np.random.normal(size=(N, 1))
 
     def propagate(self, x):
         self.t += 1
+        x = x.squeeze()
         x_next = x/2 + 25 * x/(1 + x**2) + 8 * np.cos(1.2 * self.t) + np.random.normal(size=x.size)
-        return x_next
+        return x_next.reshape((-1, 1))
 
     def log_g(self, x, y):
         return stats.norm.logpdf(y, loc=x**2/20, scale=np.sqrt(10))
 
     def log_f(self, x_current, x_previous):
+        x_current = x_current.squeeze()
         if x_previous is not None:
+            x_previous = x_previous.squeeze()
             mean = x_previous/2 + 25 * x_previous/(1 + x_previous**2) + 8 * np.cos(1.2 * self.t)
             log_prior = stats.norm.logpdf(x_current, loc=mean, scale=1)
         else:

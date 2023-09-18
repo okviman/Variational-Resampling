@@ -5,7 +5,7 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 
 s = 10
 r = 28
-b = 2.667
+b = 8 / 3
 
 
 def lorenz(x, y, z,):
@@ -23,8 +23,8 @@ def lorenz(x, y, z,):
 	return x_dot, y_dot, z_dot
 
 
-dt = 0.001
-num_steps = 1000
+dt = 0.02
+num_steps = 200
 
 
 
