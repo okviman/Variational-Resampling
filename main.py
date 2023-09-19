@@ -32,7 +32,7 @@ data = [model.generateData(T) for _ in range(1)]
 # rs_list = ['kl', 'multinomial', 'systematic', 'stratified', 'tv', 'cubo']
 rs_list = ['kl', 'multinomial', 'systematic', 'stratified']
 (x, y) = data[0]
-truth_particles = 500
+truth_particles = 50000
 truth = run_bpf(y, truth_particles, model=model, resampling_scheme='multinomial', adaptive=False, beta=1, d=d)
 x_star = truth['particles']
 print("Ground truth marg. log-likelihood", truth["marg_log_likelihood"])
