@@ -64,18 +64,9 @@ def run_bpf(y, N, model, resampling_scheme='multinomial', adaptive=False, beta=1
         ESS[t - 1] = 1 / np.sum(normalized_weights[:, t - 1] ** 2)
         if resample_criterion(adaptive, ESS[t - 1], N):
             if (resampling_scheme.lower() == 'kl') or (resampling_scheme.lower() == 'cubo'):
-                # new_ancestors = resampling(log_weights[:, t - 1])
                 new_ancestors = resampling(log_joint[:, t - 1])
-                # new_ancestors = resampling(log_g_t + log_f_t)
-            elif resampling_scheme.lower() == 'beta':
-                b = beta
-                # if t > 3.9 * T // 4:
-                #     b = beta - (t / (T-1)) ** 1 * beta + 1
-                # b = np.maximum(beta * np.cos(t), 2.5)
-                betas.append(b)
-
-                # new_ancestors = resampling(log_weights[:, t - 1], beta=b)
-                new_ancestors = resampling(log_weights[:, t - 1], beta=b)
+            elif (resampling_scheme.lower() == 'kl_iw') or (resampling_scheme.lower() == 'cubo_iw'):
+                new_ancestors = resampling(log_weights[:, t - 1])
             else:
                 new_ancestors = resampling(normalized_weights[:, t - 1]).astype(int)
             unique_idx, multiplicities = np.unique(new_ancestors, return_counts=True)
