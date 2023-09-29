@@ -59,12 +59,6 @@ def kl(log_joint, return_multiplicities=False):
         f_add[t_add] = (B_s[t_add] + 1) * (logL_s[t_add] - np.log(B_s[t_add] + 1))
         C_add_new = f_add[t_add] - f_same[t_add]
         heapq.heappush(heap, (-C_add_new, t_add))
-    # newAncestors = np.zeros(N, dtype=np.int32)
-    # idx = np.arange(N)
-    # for s, b_s in enumerate(B_s):
-    #     newAncestors[idx[:b_s]] = s
-    #     idx = idx[b_s:]
-    # ChatGPT-recommended speed up below
     newAncestors = np.repeat(np.arange(len(B_s)), B_s)
 
     if return_multiplicities:

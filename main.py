@@ -1,6 +1,7 @@
 from models.sv import SV
 from models.nl import NL
 from models.lorenz63 import Lorenz63
+# from models.lorenz96 import Lorenz96
 import numpy as np
 from bpf import run_bpf
 import matplotlib.pyplot as plt
@@ -19,18 +20,18 @@ def plot_paths(particles, B):
     plt.show()
 
 
-T = 1000
+T = 2000
 N = 100
 runs = 10
 # model, d = SV(), 1
-# model, d = NL(), 1
-model, d = Lorenz63(), 3
+model, d = NL(), 1
+# model, d = Lorenz63(), 3
 
-np.random.seed(1)
+np.random.seed(0)
 data = [model.generateData(T) for _ in range(1)]
 
 # rs_list = ['kl', 'multinomial', 'systematic', 'stratified', 'tv', 'cubo']
-rs_list = ['kl', 'multinomial', 'systematic', 'stratified']
+rs_list = ['kl', 'kl_iw', 'multinomial', 'systematic', 'stratified']
 (x, y) = data[0]
 truth_particles = 50000
 truth = run_bpf(y, truth_particles, model=model, resampling_scheme='multinomial', adaptive=False, beta=1, d=d)
@@ -76,9 +77,10 @@ for rs in tqdm(rs_list):
     # print("Filtering:", np.mean(mse_filtering))
     # print("Prediction:", np.mean(mse_predictive))
     print("Avg. marg. log-likelihood:", np.mean(marg_log_likelihoods))
+    print("Std of marg. log-likelihood estimates:", np.std(marg_log_likelihoods))
     print("Avg. ELBOs: ", np.mean(elbos))
-    print("Avg. I_0:", np.mean(mse_I_0))
-    print("Avg. I_1:", np.mean(mse_I_1))
+    print("Avg. I_0:", np.mean(mse_I_0), np.std(mse_I_0))
+    print("Avg. I_1:", np.mean(mse_I_1), np.std(mse_I_1))
     print()
 
     # plt.plot(x_star, label=rs)
