@@ -76,30 +76,30 @@ class Lorenz96:
         return log_prior + ll
 
 
-# Instantiate the model and generate data
-continuous_T = 6
-dt = 0.01
-D = 100
-T = int(continuous_T / dt)
-print(T)
-
-
-model = Lorenz96(D=D,dt=dt)
-X, observations = model.generateData(T)
-
-# original_x_axis = np.arange(0, T, 1)
-# new_x_axis = original_x_axis * dt
+# # Instantiate the model and generate data
+# continuous_T = 6
+# dt = 0.01
+# D = 100
+# T = int(continuous_T / dt)
+# print(T)
 #
-# plt.plot(new_x_axis, X[0, :])
+#
+# model = Lorenz96(D=D,dt=dt)
+# X, observations = model.generateData(T)
+#
+# # original_x_axis = np.arange(0, T, 1)
+# # new_x_axis = original_x_axis * dt
+# #
+# # plt.plot(new_x_axis, X[0, :])
+# # plt.show()
+#
+# # Plot the first three variables
+# fig = plt.figure()
+# ax = fig.add_subplot(projection="3d")
+# ax.plot(X[0, :], X[1, :], X[2, :])
+# ax.set_xlabel("$x_1$")
+# ax.set_ylabel("$x_2$")
+# ax.set_zlabel("$x_3$")
 # plt.show()
-
-# Plot the first three variables
-fig = plt.figure()
-ax = fig.add_subplot(projection="3d")
-ax.plot(X[0, :], X[1, :], X[2, :])
-ax.set_xlabel("$x_1$")
-ax.set_ylabel("$x_2$")
-ax.set_zlabel("$x_3$")
-plt.show()
-
-
+#
+#
