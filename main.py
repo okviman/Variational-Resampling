@@ -7,6 +7,8 @@ import numpy as np
 from bpf import run_bpf
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+import gc
+
 
 def plot_paths(particles, B):
     X = np.zeros_like(particles)
@@ -25,27 +27,26 @@ continuous_T = 6
 dt = 0.01
 T = int(continuous_T / dt)
 
-N = 5000
 runs = 50
 # model, d = SV(), 1
 # model, d = NL(), 1
 # model, d = Lorenz63(), 3
+truth_particles = int(5e+5)
+common_settings = "continuousT_{}_dt_{}_nruns_{}_truthparticles_{}".format(continuous_T, dt, runs, truth_particles)
 
-
-for D in [10,100,200,500,1000]:
-
-    model = Lorenz96(D=D,dt=dt)
+for D in tqdm([10, 100, 500, 1000]):
+    N = int(D * 10)
+    model = Lorenz96(D=D, dt=dt)
     np.random.seed(0)
     data = [model.generateData(T) for _ in range(1)]
 
     # rs_list = ['kl', 'multinomial', 'systematic', 'stratified', 'tv', 'cubo']
-    rs_list = ['kl', 'kl_iw', 'multinomial', 'systematic', 'stratified']
+    rs_list = ['kl', 'kl-iw', 'multinomial', 'systematic', 'stratified']
     (x, y) = data[0]
-    truth_particles = 500000
     truth = run_bpf(y, truth_particles, model=model, resampling_scheme='multinomial', adaptive=False, beta=1, d=D)
     x_star = truth['particles']
-    print("Ground truth marg. log-likelihood", truth["marg_log_likelihood"])
-    for rs in tqdm(rs_list):
+    # print("Ground truth marg. log-likelihood", truth["marg_log_likelihood"])
+    for rs in rs_list:
         np.random.seed(0)
         mse_filtering = []
         mse_predictive = []
@@ -54,7 +55,7 @@ for D in [10,100,200,500,1000]:
         marg_log_likelihoods = []
         elbos = []
 
-        for r in range(runs):
+        for r in tqdm(range(runs)):
             (x, y) = data[0]
             out = run_bpf(y, N, model=model, resampling_scheme=rs, adaptive=False, beta=1, d=d)
             # x_star_filtering = out['filtering'][0, :]
@@ -81,16 +82,35 @@ for D in [10,100,200,500,1000]:
             elbos.append(out["elbo"])
         # plot_paths(particles, paths)
 
-        print('Resampling scheme: ', rs)
-        # print("Filtering:", np.mean(mse_filtering))
-        # print("Prediction:", np.mean(mse_predictive))
-        print("Avg. marg. log-likelihood:", np.mean(marg_log_likelihoods))
-        print("Std of marg. log-likelihood estimates:", np.std(marg_log_likelihoods))
-        print("Avg. ELBOs: ", np.mean(elbos))
-        print("Avg. I_0:", np.mean(mse_I_0), np.std(mse_I_0))
-        print("Avg. I_1:", np.mean(mse_I_1), np.std(mse_I_1))
-        print()
+        # print('Resampling scheme: ', rs)
+        # # print("Filtering:", np.mean(mse_filtering))
+        # # print("Prediction:", np.mean(mse_predictive))
+        # print("Avg. marg. log-likelihood:", np.mean(marg_log_likelihoods))
+        # print("Std of marg. log-likelihood estimates:", np.std(marg_log_likelihoods))
+        # print("Avg. ELBOs: ", np.mean(elbos))
+        # print("Avg. I_0:", np.mean(mse_I_0), np.std(mse_I_0))
+        # print("Avg. I_1:", np.mean(mse_I_1), np.std(mse_I_1))
+        # print()
+
+        np.save('./results/{}/avgloglik_dimensions_{}_N_{}_{}.npy'.format(rs, str(D), N, common_settings),
+                np.mean(marg_log_likelihoods))
+        np.save('./results/{}/mseloglikwrtgroundtruth_dimensions_{}_N_{}_{}.npy'.format(rs, str(D), N, common_settings),
+                np.mean((marg_log_likelihoods - truth["marg_log_likelihood"]) ** 2))
+        np.save('./results/{}/biasaquaredloglik_dimensions_{}_N_{}_{}.npy'.format(rs, str(D), N, common_settings),
+                (np.mean(marg_log_likelihoods) - truth["marg_log_likelihood"]) ** 2)
+        np.save('./results/{}/varianceloglik_dimensions_{}_N_{}_{}.npy'.format(rs, str(D), N, common_settings),
+                np.var(marg_log_likelihoods))
+        np.save('./results/{}/avgI-0_dimensions_{}_N_{}_{}.npy'.format(rs, str(D), N, common_settings),
+                np.mean(mse_I_0))
+        np.save('./results/{}/stdI-0_dimensions_{}_N_{}_{}.npy'.format(rs, str(D), N, common_settings), np.std(mse_I_0))
+        np.save('./results/{}/avgI-1_dimensions_{}_N_{}_{}.npy'.format(rs, str(D), N, common_settings),
+                np.mean(mse_I_1))
+        np.save('./results/{}/stdI-1_dimensions_{}_N_{}_{}.npy'.format(rs, str(D), N, common_settings), np.std(mse_I_1))
+
+        del out
+        gc.collect()
 
         # plt.plot(x_star, label=rs)
+
     # plt.legend()
     # plt.show()
