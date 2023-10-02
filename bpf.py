@@ -5,11 +5,11 @@ import numpy as np
 from scipy.special import logsumexp
 
 
-def run_bpf(y, N, model, resampling_scheme='multinomial', adaptive=False, beta=1.):
+def run_bpf(y, N, model, resampling_scheme='multinomial', adaptive=False, beta=1., d=1):
     # Bootstrap Particle Filter (BPF)
     T = len(y)
 
-    particles = np.zeros((N, T))
+    particles = np.zeros((N, d, T))
     normalized_weights = np.zeros((N, T))
     B = np.zeros((N, T))
     ESS = np.zeros(T)
@@ -36,10 +36,10 @@ def run_bpf(y, N, model, resampling_scheme='multinomial', adaptive=False, beta=1
     else:
         resampling = kl
 
-    particles[:, 0] = model.particle_0(N)
-    log_g_t = model.log_g(x=particles[:, 0], y=y[0])
+    particles[..., 0] = model.particle_0(N)
+    log_g_t = model.log_g(x=particles[:, 0, 0], y=y[0])
     log_l_data[:, 0] = log_g_t
-    log_f_t = model.log_f(particles[:, 0], None)
+    log_f_t = model.log_f(particles[..., 0], None)
     log_l_latent[:, 0] = log_f_t
     log_joint[:, 0] = log_l_data[:, 0] + log_l_latent[:, 0]
     normalized_weights[:, 0], log_weights[:, 0] = update_weights(log_weights=log_weights[:, 0], log_g_t=log_g_t)
@@ -49,12 +49,14 @@ def run_bpf(y, N, model, resampling_scheme='multinomial', adaptive=False, beta=1
     betas = []
 
     # == Stats == #
+    """
     mle_idx = np.argmax(log_joint[:, 0])
     filtering[0, 0] = normalized_weights[:, 0] @ particles[:, 0]
     filtering[1, 0] = np.std(particles[:, 0])
     mle_filtering[0] = particles[mle_idx, 0]
-    marg_log_likelihood += logsumexp(log_weights[:, 0] - np.log(N))
     predictions[0, 0] = np.mean(particles[:, 0])
+    """
+    marg_log_likelihood += logsumexp(log_weights[:, 0] - np.log(N))
     elbo = 0  # np.mean(log_weights[:, 0])
 
     for t in range(1, T):
@@ -62,18 +64,9 @@ def run_bpf(y, N, model, resampling_scheme='multinomial', adaptive=False, beta=1
         ESS[t - 1] = 1 / np.sum(normalized_weights[:, t - 1] ** 2)
         if resample_criterion(adaptive, ESS[t - 1], N):
             if (resampling_scheme.lower() == 'kl') or (resampling_scheme.lower() == 'cubo'):
-                # new_ancestors = resampling(log_weights[:, t - 1])
                 new_ancestors = resampling(log_joint[:, t - 1])
-                # new_ancestors = resampling(log_g_t + log_f_t)
-            elif resampling_scheme.lower() == 'beta':
-                b = beta
-                # if t > 3.9 * T // 4:
-                #     b = beta - (t / (T-1)) ** 1 * beta + 1
-                # b = np.maximum(beta * np.cos(t), 2.5)
-                betas.append(b)
-
-                # new_ancestors = resampling(log_weights[:, t - 1], beta=b)
-                new_ancestors = resampling(log_weights[:, t - 1], beta=b)
+            elif (resampling_scheme.lower() == 'kl_iw') or (resampling_scheme.lower() == 'cubo_iw'):
+                new_ancestors = resampling(log_weights[:, t - 1])
             else:
                 new_ancestors = resampling(normalized_weights[:, t - 1]).astype(int)
             unique_idx, multiplicities = np.unique(new_ancestors, return_counts=True)
@@ -94,27 +87,27 @@ def run_bpf(y, N, model, resampling_scheme='multinomial', adaptive=False, beta=1
 
         # == Propagate == #
         B[:, t] = new_ancestors
-        particles[:, t] = model.propagate(particles[new_ancestors, t - 1])
+        particles[:, :, t] = model.propagate(particles[new_ancestors, :, t - 1])
 
-        predictions[0, t] = np.mean(particles[:, t])
-        predictions[1, t] = np.std(particles[:, t])
+        # predictions[0, t] = np.mean(particles[:, t])
+        # predictions[1, t] = np.std(particles[:, t])
 
         # == Compute weights == #
-        log_g_t = model.log_g(particles[:, t], y[t])  # incremental weight function
+        log_g_t = model.log_g(particles[:, 0, t], y[t])  # incremental weight function
         normalized_weights[:, t], log_weights[:, t] = update_weights(log_weights[:, t - 1], log_g_t)
 
         # == Update data log-likelihood == #
         log_l_data[:, t] = log_g_t + log_l_data[new_ancestors, t - 1]
 
         # == Update log prior == #
-        log_f_t = model.log_f(particles[:, t], particles[new_ancestors, t - 1])
+        log_f_t = model.log_f(particles[..., t], particles[new_ancestors, :, t - 1])
         log_l_latent[:, t] = log_f_t + log_l_latent[new_ancestors, t - 1]
 
         # == Update joint likelihood == #
         log_joint[:, t] = log_g_t + log_f_t + log_joint[new_ancestors, t - 1]
 
         # == Filtering == #
-        filtering[0, t] = normalized_weights[:, t] @ particles[:, t]
+        # filtering[0, t] = normalized_weights[:, t] @ particles[:, t]
         # filtering[0, t - 1] = (multiplicities / N) @ particles[unique_idx, t - 1]
 
         # == Marg. Log-Likelihood == #
@@ -130,11 +123,11 @@ def run_bpf(y, N, model, resampling_scheme='multinomial', adaptive=False, beta=1
     # == Sample sequence from resulting posterior == #
     B = B.astype(int)
     b = np.where(np.random.uniform(size=1) < np.cumsum(normalized_weights[:, T - 1]))[0][0]
-    x_star = np.zeros(T)
+    x_star = np.zeros((d, T))
     log_likelihood = np.zeros(T)
     indx = b
     for t in reversed(range(T)):
-        x_star[t] = particles[indx, t]  # sampled particle trajectory
+        x_star[:, t] = particles[indx, :, t]  # sampled particle trajectory
         log_likelihood[t] = log_joint[indx, t]  # joint likelihood of sampled trajectory
         indx = B[indx, t]
 
@@ -158,4 +151,5 @@ def resample_criterion(adaptive, ESS, N):
         return ESS < N / 2
     else:
         return True
+
 

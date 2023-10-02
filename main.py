@@ -1,5 +1,8 @@
 from models.sv import SV
 from models.nl import NL
+from models.lorenz63 import Lorenz63
+from models.lorenz96 import Lorenz96
+
 import numpy as np
 from bpf import run_bpf
 import matplotlib.pyplot as plt
@@ -18,67 +21,76 @@ def plot_paths(particles, B):
     plt.show()
 
 
-T = 100
-N = 1000
-runs = 1
-model = SV()
-# model = NL()
+continuous_T = 6
+dt = 0.01
+T = int(continuous_T / dt)
 
-np.random.seed(2)
-data = [model.generateData(T) for _ in range(runs)]
+N = 5000
+runs = 50
+# model, d = SV(), 1
+# model, d = NL(), 1
+# model, d = Lorenz63(), 3
 
-# n_test = 100
-# test_x_set = np.zeros((n_test, T))
-# for i in range(n_test):
-#     test_x_set[i] = model.generateData(T)[0]
 
-# rs_list = ['kl', 'multinomial', 'systematic', 'stratified', 'tv', 'cubo']
-rs_list = ['kl', 'multinomial']
-(x, y) = data[0]
-truth_particles = 50000
-truth = run_bpf(y, truth_particles, model=model, resampling_scheme='multinomial', adaptive=False, beta=1)
-x_star = truth['particles']
-for rs in rs_list:
+for D in [10,100,200,500,1000]:
+
+    model = Lorenz96(D=D,dt=dt)
     np.random.seed(0)
-    mse_filtering = []
-    mse_predictive = []
-    mse_smoothing = []
-    marg_log_likelihoods = []
-    elbos = []
+    data = [model.generateData(T) for _ in range(1)]
 
-    for r in range(runs):
-        (x, y) = data[r]
-        out = run_bpf(y, N, model=model, resampling_scheme=rs, adaptive=False, beta=1)
-        x_star_filtering = out['filtering'][0, :]
-        x_star_predictive = out['predictions'][0, :]
-        mse_filtering.append(np.mean((x_star_filtering[:-1] - x[:-1]) ** 2))
-        mse_predictive.append((np.mean((x_star_predictive - x) ** 2)))
-        # resampling weight = w_{t-1} * p(y_t | mean of p(x_t | x_{t-1}) )
-        # importance weight =  p(y_t | x_t ) / p(y_t | mean of p(x_t | x_{t-1}) )
-        q = out['posterior']
-        paths = out['B']
-        particles = out['particles']
-        idx = np.arange(N)
-        idx_star = np.arange(truth_particles)
-        mse_s = 0
-        for t in tqdm(reversed(range(T))):
-            mse_s += ((q @ particles[idx, t] - truth['posterior'] @ x_star[idx_star, t]) ** 2) / T
-            # mse_s += ((q @ particles[idx, t] - x[t]) ** 2) / T
-            idx = paths[idx, t]
-            idx_star = truth['B'][idx_star, t]
-        mse_smoothing.append(mse_s)
-        marg_log_likelihoods.append(out['marg_log_likelihood'])
-        elbos.append(out["elbo"])
-    plot_paths(particles, paths)
+    # rs_list = ['kl', 'multinomial', 'systematic', 'stratified', 'tv', 'cubo']
+    rs_list = ['kl', 'kl_iw', 'multinomial', 'systematic', 'stratified']
+    (x, y) = data[0]
+    truth_particles = 500000
+    truth = run_bpf(y, truth_particles, model=model, resampling_scheme='multinomial', adaptive=False, beta=1, d=D)
+    x_star = truth['particles']
+    print("Ground truth marg. log-likelihood", truth["marg_log_likelihood"])
+    for rs in tqdm(rs_list):
+        np.random.seed(0)
+        mse_filtering = []
+        mse_predictive = []
+        mse_I_0 = []
+        mse_I_1 = []
+        marg_log_likelihoods = []
+        elbos = []
 
-    print('Resampling scheme: ', rs)
-    print("Filtering:", np.mean(mse_filtering))
-    print("Prediction:", np.mean(mse_predictive))
-    print("Avg. marg. log-likelihood:", np.mean(marg_log_likelihoods))
-    print("Avg. ELBOs: ", np.mean(elbos))
-    print("Avg. Smoothing:", np.mean(mse_smoothing))
-    print()
+        for r in range(runs):
+            (x, y) = data[0]
+            out = run_bpf(y, N, model=model, resampling_scheme=rs, adaptive=False, beta=1, d=d)
+            # x_star_filtering = out['filtering'][0, :]
+            # x_star_predictive = out['predictions'][0, :]
+            # mse_filtering.append(np.mean((x_star_filtering[:-1] - x[:-1]) ** 2))
+            # mse_predictive.append((np.mean((x_star_predictive - x) ** 2)))
+            # resampling weight = w_{t-1} * p(y_t | mean of p(x_t | x_{t-1}) )
+            # importance weight =  p(y_t | x_t ) / p(y_t | mean of p(x_t | x_{t-1}) )
+            q = out['posterior']
+            paths = out['B']
+            particles = out['particles']
+            idx = np.arange(N)
+            idx_star = np.arange(truth_particles)
+            I_0 = 0
+            I_1 = 0
+            for t in reversed(range(T)):
+                I_0 += ((q @ particles[idx, :, t] - x[:, t]) ** 2) / T
+                I_1 += ((q @ particles[idx, :, t] - truth['posterior'] @ x_star[idx_star, :, t]) ** 2) / T
+                idx = paths[idx, t]
+                idx_star = truth['B'][idx_star, t]
+            mse_I_0.append(I_0)
+            mse_I_1.append(I_1)
+            marg_log_likelihoods.append(out['marg_log_likelihood'])
+            elbos.append(out["elbo"])
+        # plot_paths(particles, paths)
 
-    # plt.plot(x_star, label=rs)
-# plt.legend()
-# plt.show()
+        print('Resampling scheme: ', rs)
+        # print("Filtering:", np.mean(mse_filtering))
+        # print("Prediction:", np.mean(mse_predictive))
+        print("Avg. marg. log-likelihood:", np.mean(marg_log_likelihoods))
+        print("Std of marg. log-likelihood estimates:", np.std(marg_log_likelihoods))
+        print("Avg. ELBOs: ", np.mean(elbos))
+        print("Avg. I_0:", np.mean(mse_I_0), np.std(mse_I_0))
+        print("Avg. I_1:", np.mean(mse_I_1), np.std(mse_I_1))
+        print()
+
+        # plt.plot(x_star, label=rs)
+    # plt.legend()
+    # plt.show()
