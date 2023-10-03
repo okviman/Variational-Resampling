@@ -31,11 +31,11 @@ runs = 50
 # model, d = SV(), 1
 # model, d = NL(), 1
 # model, d = Lorenz63(), 3
-truth_particles = int(5e+5)
+truth_particles = int(8e+4)
 common_settings = "continuousT_{}_dt_{}_nruns_{}_truthparticles_{}".format(continuous_T, dt, runs, truth_particles)
 
 for D in tqdm([10, 100, 500, 1000]):
-    N = int(D * 10)
+    N = int(D * 100)
     model = Lorenz96(D=D, dt=dt)
     np.random.seed(0)
     data = [model.generateData(T) for _ in range(1)]
@@ -43,9 +43,9 @@ for D in tqdm([10, 100, 500, 1000]):
     # rs_list = ['kl', 'multinomial', 'systematic', 'stratified', 'tv', 'cubo']
     rs_list = ['kl', 'kl-iw', 'multinomial', 'systematic', 'stratified']
     (x, y) = data[0]
-    truth = run_bpf(y, truth_particles, model=model, resampling_scheme='multinomial', adaptive=False, beta=1, d=D)
+    truth = run_bpf(y, truth_particles, model=model, resampling_scheme='stratified', adaptive=False, beta=1, d=D)
     x_star = truth['particles']
-    # print("Ground truth marg. log-likelihood", truth["marg_log_likelihood"])
+    print("Ground truth marg. log-likelihood", truth["marg_log_likelihood"])
     for rs in rs_list:
         np.random.seed(0)
         mse_filtering = []
@@ -57,7 +57,7 @@ for D in tqdm([10, 100, 500, 1000]):
 
         for r in tqdm(range(runs)):
             (x, y) = data[0]
-            out = run_bpf(y, N, model=model, resampling_scheme=rs, adaptive=False, beta=1, d=d)
+            out = run_bpf(y, N, model=model, resampling_scheme=rs, adaptive=False, beta=1, d=D)
             # x_star_filtering = out['filtering'][0, :]
             # x_star_predictive = out['predictions'][0, :]
             # mse_filtering.append(np.mean((x_star_filtering[:-1] - x[:-1]) ** 2))

@@ -4,23 +4,32 @@ import scipy.stats as stats
 from scipy.stats import multivariate_normal
 import matplotlib.pyplot as plt
 
+# def lorenz96_discretized(X, F):
+#     '''
+#     Discretized Lorenz 96 dynamics with a simple Euler scheme
+#
+#     Given:
+#        X: state vector of the Lorenz 96 model
+#        F: forcing term
+#     Returns:
+#        X_dot: derivatives at the current state
+#     '''
+#     D = len(X)
+#     X_dot = np.empty(D)
+#
+#     for i in range(D):
+#         X_dot[i] = (X[(i + 1) % D] - X[i - 2]) * X[i - 1] - X[i] + F
+#
+#     return X_dot
+
 def lorenz96_discretized(X, F):
-    '''
-    Discretized Lorenz 96 dynamics with a simple Euler scheme
-
-    Given:
-       X: state vector of the Lorenz 96 model
-       F: forcing term
-    Returns:
-       X_dot: derivatives at the current state
-    '''
     D = len(X)
-    X_dot = np.empty(D)
-
-    for i in range(D):
-        X_dot[i] = (X[(i + 1) % D] - X[i - 2]) * X[i - 1] - X[i] + F
-
+    ip1 = np.arange(1, D + 1) % D
+    im1 = np.arange(-1, D - 1) % D
+    im2 = np.arange(-2, D - 2) % D
+    X_dot = (X[ip1] - X[im2]) * X[im1] - X + F
     return X_dot
+
 
 
 class Lorenz96:
@@ -77,29 +86,29 @@ class Lorenz96:
 
 
 # # Instantiate the model and generate data
-# continuous_T = 6
-# dt = 0.01
-# D = 100
-# T = int(continuous_T / dt)
-# print(T)
+continuous_T = 6
+dt = 0.01
+D = 100
+T = int(continuous_T / dt)
+print(T)
+
+
+model = Lorenz96(D=D,dt=dt)
+X, observations = model.generateData(T)
+
+# original_x_axis = np.arange(0, T, 1)
+# new_x_axis = original_x_axis * dt
 #
-#
-# model = Lorenz96(D=D,dt=dt)
-# X, observations = model.generateData(T)
-#
-# # original_x_axis = np.arange(0, T, 1)
-# # new_x_axis = original_x_axis * dt
-# #
-# # plt.plot(new_x_axis, X[0, :])
-# # plt.show()
-#
-# # Plot the first three variables
-# fig = plt.figure()
-# ax = fig.add_subplot(projection="3d")
-# ax.plot(X[0, :], X[1, :], X[2, :])
-# ax.set_xlabel("$x_1$")
-# ax.set_ylabel("$x_2$")
-# ax.set_zlabel("$x_3$")
+# plt.plot(new_x_axis, X[0, :])
 # plt.show()
-#
+
+# Plot the first three variables
+fig = plt.figure()
+ax = fig.add_subplot(projection="3d")
+ax.plot(X[0, :], X[1, :], X[2, :])
+ax.set_xlabel("$x_1$")
+ax.set_ylabel("$x_2$")
+ax.set_zlabel("$x_3$")
+plt.show()
+
 #
