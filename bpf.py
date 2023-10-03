@@ -65,7 +65,7 @@ def run_bpf(y, N, model, resampling_scheme='multinomial', adaptive=False, beta=1
         if resample_criterion(adaptive, ESS[t - 1], N):
             if (resampling_scheme.lower() == 'kl') or (resampling_scheme.lower() == 'cubo'):
                 new_ancestors = resampling(log_joint[:, t - 1])
-            elif (resampling_scheme.lower() == 'kl_iw') or (resampling_scheme.lower() == 'cubo_iw'):
+            elif (resampling_scheme.lower() == 'kl-iw') or (resampling_scheme.lower() == 'cubo_iw'):
                 new_ancestors = resampling(log_weights[:, t - 1])
             else:
                 new_ancestors = resampling(normalized_weights[:, t - 1]).astype(int)
@@ -151,4 +151,5 @@ def resample_criterion(adaptive, ESS, N):
         return ESS < N / 2
     else:
         return True
+
 
