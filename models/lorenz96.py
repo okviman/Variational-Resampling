@@ -70,7 +70,8 @@ class Lorenz96:
         return x + npr.normal(0, self.state_noise, size=x.shape)
 
     def log_g(self, x, y):
-        return multivariate_normal.logpdf( x=y, mean=x[:self.number_of_observed_coordinates], cov=np.eye(self.number_of_observed_coordinates) )
+        # return multivariate_normal.logpdf(x=y, mean=x[:, :self.number_of_observed_coordinates], cov=np.eye(self.number_of_observed_coordinates))
+        return stats.norm.logpdf(y, x, 1).sum(-1)
 
     def log_f(self, x_current, x_previous):
         if x_previous is not None:
@@ -85,30 +86,31 @@ class Lorenz96:
         return log_prior + ll
 
 
-# # Instantiate the model and generate data
-continuous_T = 6
-dt = 0.01
-D = 100
-T = int(continuous_T / dt)
-print(T)
+if __name__ == '__main__':
+    # # Instantiate the model and generate data
+    continuous_T = 10
+    dt = 0.01
+    D = 100
+    T = int(continuous_T / dt)
+    print(T)
 
 
-model = Lorenz96(D=D,dt=dt)
-X, observations = model.generateData(T)
+    model = Lorenz96(D=D,dt=dt)
+    X, observations = model.generateData(T)
 
-# original_x_axis = np.arange(0, T, 1)
-# new_x_axis = original_x_axis * dt
-#
-# plt.plot(new_x_axis, X[0, :])
-# plt.show()
+    # original_x_axis = np.arange(0, T, 1)
+    # new_x_axis = original_x_axis * dt
+    #
+    # plt.plot(new_x_axis, X[0, :])
+    # plt.show()
 
-# Plot the first three variables
-fig = plt.figure()
-ax = fig.add_subplot(projection="3d")
-ax.plot(X[0, :], X[1, :], X[2, :])
-ax.set_xlabel("$x_1$")
-ax.set_ylabel("$x_2$")
-ax.set_zlabel("$x_3$")
-plt.show()
+    # Plot the first three variables
+    fig = plt.figure()
+    ax = fig.add_subplot(projection="3d")
+    ax.plot(X[0, :], X[1, :], X[2, :])
+    ax.set_xlabel("$x_1$")
+    ax.set_ylabel("$x_2$")
+    ax.set_zlabel("$x_3$")
+    plt.show()
 
-#
+    #

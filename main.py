@@ -23,19 +23,19 @@ def plot_paths(particles, B):
     plt.show()
 
 
-continuous_T = 6
+continuous_T = 20
 dt = 0.01
 T = int(continuous_T / dt)
 
-runs = 50
+runs = 10
 # model, d = SV(), 1
 # model, d = NL(), 1
 # model, d = Lorenz63(), 3
-truth_particles = int(8e+4)
+truth_particles = 50000
 common_settings = "continuousT_{}_dt_{}_nruns_{}_truthparticles_{}".format(continuous_T, dt, runs, truth_particles)
 
-for D in tqdm([10, 100, 500, 1000]):
-    N = int(D * 100)
+for D in tqdm([10]):
+    N = int(D * 10)
     model = Lorenz96(D=D, dt=dt)
     np.random.seed(0)
     data = [model.generateData(T) for _ in range(1)]
@@ -43,7 +43,7 @@ for D in tqdm([10, 100, 500, 1000]):
     # rs_list = ['kl', 'multinomial', 'systematic', 'stratified', 'tv', 'cubo']
     rs_list = ['kl', 'kl-iw', 'multinomial', 'systematic', 'stratified']
     (x, y) = data[0]
-    truth = run_bpf(y, truth_particles, model=model, resampling_scheme='stratified', adaptive=False, beta=1, d=D)
+    truth = run_bpf(y, truth_particles, model=model, resampling_scheme='multinomial', adaptive=False, beta=1, d=D)
     x_star = truth['particles']
     print("Ground truth marg. log-likelihood", truth["marg_log_likelihood"])
     for rs in rs_list:
@@ -88,8 +88,8 @@ for D in tqdm([10, 100, 500, 1000]):
         # print("Avg. marg. log-likelihood:", np.mean(marg_log_likelihoods))
         # print("Std of marg. log-likelihood estimates:", np.std(marg_log_likelihoods))
         # print("Avg. ELBOs: ", np.mean(elbos))
-        # print("Avg. I_0:", np.mean(mse_I_0), np.std(mse_I_0))
-        # print("Avg. I_1:", np.mean(mse_I_1), np.std(mse_I_1))
+        print("Avg. I_0:", np.mean(mse_I_0), np.std(mse_I_0))
+        print("Avg. I_1:", np.mean(mse_I_1), np.std(mse_I_1))
         # print()
 
         np.save('./results/{}/avgloglik_dimensions_{}_N_{}_{}.npy'.format(rs, str(D), N, common_settings),

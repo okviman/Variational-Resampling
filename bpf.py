@@ -8,6 +8,7 @@ from scipy.special import logsumexp
 def run_bpf(y, N, model, resampling_scheme='multinomial', adaptive=False, beta=1., d=1):
     # Bootstrap Particle Filter (BPF)
     T = len(y)
+    d_y = y.shape[-1]
 
     particles = np.zeros((N, d, T))
     normalized_weights = np.zeros((N, T))
@@ -37,7 +38,7 @@ def run_bpf(y, N, model, resampling_scheme='multinomial', adaptive=False, beta=1
         resampling = kl
 
     particles[..., 0] = model.particle_0(N)
-    log_g_t = model.log_g(x=particles[:, 0, 0], y=y[0])
+    log_g_t = model.log_g(x=particles[:, :d_y, 0], y=y[0])
     log_l_data[:, 0] = log_g_t
     log_f_t = model.log_f(particles[..., 0], None)
     log_l_latent[:, 0] = log_f_t
@@ -63,9 +64,9 @@ def run_bpf(y, N, model, resampling_scheme='multinomial', adaptive=False, beta=1
         # == Resampling == #
         ESS[t - 1] = 1 / np.sum(normalized_weights[:, t - 1] ** 2)
         if resample_criterion(adaptive, ESS[t - 1], N):
-            if (resampling_scheme.lower() == 'kl') or (resampling_scheme.lower() == 'cubo'):
+            if resampling_scheme.lower() == 'kl':
                 new_ancestors = resampling(log_joint[:, t - 1])
-            elif (resampling_scheme.lower() == 'kl-iw') or (resampling_scheme.lower() == 'cubo_iw'):
+            elif resampling_scheme.lower() == 'kl-iw':
                 new_ancestors = resampling(log_weights[:, t - 1])
             else:
                 new_ancestors = resampling(normalized_weights[:, t - 1]).astype(int)
@@ -93,7 +94,7 @@ def run_bpf(y, N, model, resampling_scheme='multinomial', adaptive=False, beta=1
         # predictions[1, t] = np.std(particles[:, t])
 
         # == Compute weights == #
-        log_g_t = model.log_g(particles[:, 0, t], y[t])  # incremental weight function
+        log_g_t = model.log_g(particles[:, :d_y, t], y[t])  # incremental weight function
         normalized_weights[:, t], log_weights[:, t] = update_weights(log_weights[:, t - 1], log_g_t)
 
         # == Update data log-likelihood == #
