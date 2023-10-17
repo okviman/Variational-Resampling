@@ -6,12 +6,6 @@ from scipy.stats import norm
 from resampling import kl, multinomial_resampling, systematic_resampling, stratified_resampling
 
 
-"""def eval_log_p(x):
-    p1 = norm(0, 0.2)
-    p2 = norm(0, 0.2)
-    pi = np.array([0.3, 0.7])
-    return logsumexp([np.log(pi[0]) + p1.logpdf(x), np.log(pi[1]) + p2.logpdf(x)], axis=0)
-"""
 def eval_log_p(x, pi):
     py_x = norm(0., sigma_y)
     px = pi
@@ -75,16 +69,9 @@ if __name__ == '__main__':
         x_resampled = x[idx]
         plot_resampled_particles(x_resampled, title)
         print(title)
-        """
-        print("Using model based target:")
-        print("KL = ", get_kl(idx, log_p_normed, S))
-        print("TV =", get_tv(idx, log_p_normed, S))
-        """
         print("Using importance weighted target:")
         print("ResELBO = ", get_reselbo(idx, log_w, N))
         print("TV =", get_tv(idx, np.log(w_tilde), N))
-        # print("KDE estimated KLDs")
-        # print(get_kde_kl(x_resampled))
         print()
 
 

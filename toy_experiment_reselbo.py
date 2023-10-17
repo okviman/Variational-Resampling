@@ -1,3 +1,5 @@
+# NOT USED IN THE PAPER
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
@@ -22,8 +24,8 @@ n_iterations = 100
 N_list = [1000]
 n_N = len(N_list)
 resampling_schemes = [kl, kl, multinomial_resampling, systematic_resampling, stratified_resampling]
-resampling_names = [r'ELBO Resampler w. $\bar{p}$', r'ELBO Resampler w. $q$', 'Multinomial Resampling', 'Systematic Resampling',
-                              'Stratified Resampling']
+resampling_names = [r'LB Resampler w. $\pi_\gamma$', r'LB Resampler w. $\pi_w$', 'Multinomial Resampling',
+                    'Systematic Resampling', 'Stratified Resampling']
 
 # last two dimensions are mean and std
 reselbo_stats = np.zeros((len(resampling_schemes), n_N, 2))
@@ -37,9 +39,9 @@ for s, S in enumerate(N_list):
         w = np.exp(log_w - logsumexp(log_w))
 
         for i, (rs, title) in enumerate(zip(resampling_schemes, resampling_names)):
-            if 'q' in title:
+            if r'\pi_w' in title:
                 idx = rs(log_w)
-            elif r'\bar{p}' in title:
+            elif r'\gamma' in title:
                 idx = rs(log_p)
             else:
                 idx = rs(w)

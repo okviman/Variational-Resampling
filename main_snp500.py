@@ -38,10 +38,9 @@ for rs in rs_list:
     elbos = []
     ess = []
     tvs = []
-    print(rs)
 
     for r in tqdm(range(runs)):
-        out = run_bpf(y, N, model=model, resampling_scheme=rs, adaptive=False, beta=1, d=1)
+        out = run_bpf(y, N, model=model, resampling_scheme=rs, adaptive=False, d=1)
         q = out['posterior']
         paths = out['B']
         particles = out['particles']
@@ -59,9 +58,7 @@ for rs in rs_list:
         tvs.append(np.mean(out['tvs']))
     # plot_paths(particles, paths)
 
-    # print('Resampling scheme: ', rs)
-    # # print("Filtering:", np.mean(mse_filtering))
-    # # print("Prediction:", np.mean(mse_predictive))
+    print('Resampling scheme: ', rs)
     print("Avg. marg. log-likelihood:", np.mean(marg_log_likelihoods))
     print("Std of marg. log-likelihood estimates:", np.std(marg_log_likelihoods))
     print("Avg. ELBOs: ", np.mean(elbos))
