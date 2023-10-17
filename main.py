@@ -41,33 +41,26 @@ for D in tqdm([d]):
     np.random.seed(0)
     data = [model.generateData(T) for _ in range(1)]
 
-    rs_list = ['multinomial', 'systematic', 'stratified']
-    # rs_list = ['kl', 'kl-iw', 'multinomial', 'systematic', 'stratified']
+    rs_list = ['kl', 'kl-iw', 'multinomial', 'systematic', 'stratified']
     (x, y) = data[0]
-    truth = run_bpf(y, truth_particles, model=model, resampling_scheme='multinomial', adaptive=False, beta=1, d=D)
+    truth = run_bpf(y, truth_particles, model=model, resampling_scheme='multinomial', adaptive=False, d=D)
     x_star = truth['particles']
     print("Ground truth marg. log-likelihood", truth["marg_log_likelihood"])
     for rs in rs_list:
         np.random.seed(0)
         mse_filtering = []
         mse_predictive = []
-        mse_I_0 = []
-        mse_I_1 = []
+        mse_I_0 = []  # I_0 = MSE^* in the paper
+        mse_I_1 = []  # I_1 = MSE
         marg_log_likelihoods = []
         elbos = []
         ess = []
         tvs = []
-        print(rs)
 
         for r in tqdm(range(runs)):
             (x, y) = data[0]
-            out = run_bpf(y, N, model=model, resampling_scheme=rs, adaptive=False, beta=1, d=D)
-            # x_star_filtering = out['filtering'][0, :]
-            # x_star_predictive = out['predictions'][0, :]
-            # mse_filtering.append(np.mean((x_star_filtering[:-1] - x[:-1]) ** 2))
-            # mse_predictive.append((np.mean((x_star_predictive - x) ** 2)))
-            # resampling weight = w_{t-1} * p(y_t | mean of p(x_t | x_{t-1}) )
-            # importance weight =  p(y_t | x_t ) / p(y_t | mean of p(x_t | x_{t-1}) )
+            out = run_bpf(y, N, model=model, resampling_scheme=rs, adaptive=False, d=D)
+
             q = out['posterior']
             paths = out['B']
             particles = out['particles']
@@ -89,8 +82,6 @@ for D in tqdm([d]):
         # plot_paths(particles, paths)
 
         # print('Resampling scheme: ', rs)
-        # # print("Filtering:", np.mean(mse_filtering))
-        # # print("Prediction:", np.mean(mse_predictive))
         print("Avg. marg. log-likelihood:", np.mean(marg_log_likelihoods))
         print("Std of marg. log-likelihood estimates:", np.std(marg_log_likelihoods))
         print("Avg. ELBOs: ", np.mean(elbos))
@@ -118,7 +109,3 @@ for D in tqdm([d]):
         del out
         gc.collect()
 
-        # plt.plot(x_star, label=rs)
-
-    # plt.legend()
-    # plt.show()
