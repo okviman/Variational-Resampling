@@ -23,25 +23,26 @@ def plot_paths(particles, B):
     plt.show()
 
 
-continuous_T = 20
+continuous_T = 10
 dt = 0.01
 T = int(continuous_T / dt)
 
 runs = 10
-# model, d = SV(), 1
+model, d = SV(), 1
 # model, d = NL(), 1
-# model, d = Lorenz63(), 3
+# model, d = Lorenz63(dt=dt), 3
 truth_particles = 50000
 common_settings = "continuousT_{}_dt_{}_nruns_{}_truthparticles_{}".format(continuous_T, dt, runs, truth_particles)
 
-for D in tqdm([10]):
-    N = int(D * 10)
-    model = Lorenz96(D=D, dt=dt)
+for D in tqdm([d]):
+    # N = int(D * 10)
+    N = 1000
+    # model = Lorenz96(D=D, dt=dt)
     np.random.seed(0)
     data = [model.generateData(T) for _ in range(1)]
 
-    # rs_list = ['kl', 'multinomial', 'systematic', 'stratified', 'tv', 'cubo']
-    rs_list = ['kl', 'kl-iw', 'multinomial', 'systematic', 'stratified']
+    rs_list = ['multinomial', 'systematic', 'stratified']
+    # rs_list = ['kl', 'kl-iw', 'multinomial', 'systematic', 'stratified']
     (x, y) = data[0]
     truth = run_bpf(y, truth_particles, model=model, resampling_scheme='multinomial', adaptive=False, beta=1, d=D)
     x_star = truth['particles']
@@ -54,6 +55,9 @@ for D in tqdm([10]):
         mse_I_1 = []
         marg_log_likelihoods = []
         elbos = []
+        ess = []
+        tvs = []
+        print(rs)
 
         for r in tqdm(range(runs)):
             (x, y) = data[0]
@@ -80,17 +84,21 @@ for D in tqdm([10]):
             mse_I_1.append(I_1)
             marg_log_likelihoods.append(out['marg_log_likelihood'])
             elbos.append(out["elbo"])
+            ess.append(np.mean(out['ESS']))
+            tvs.append(np.mean(out['tvs']))
         # plot_paths(particles, paths)
 
         # print('Resampling scheme: ', rs)
         # # print("Filtering:", np.mean(mse_filtering))
         # # print("Prediction:", np.mean(mse_predictive))
-        # print("Avg. marg. log-likelihood:", np.mean(marg_log_likelihoods))
-        # print("Std of marg. log-likelihood estimates:", np.std(marg_log_likelihoods))
-        # print("Avg. ELBOs: ", np.mean(elbos))
+        print("Avg. marg. log-likelihood:", np.mean(marg_log_likelihoods))
+        print("Std of marg. log-likelihood estimates:", np.std(marg_log_likelihoods))
+        print("Avg. ELBOs: ", np.mean(elbos))
         print("Avg. I_0:", np.mean(mse_I_0), np.std(mse_I_0))
         print("Avg. I_1:", np.mean(mse_I_1), np.std(mse_I_1))
-        # print()
+        print("Avg. ESS: ", np.mean(ess))
+        print("Avg. TV", np.mean(tvs))
+        print()
 
         np.save('./results/{}/avgloglik_dimensions_{}_N_{}_{}.npy'.format(rs, str(D), N, common_settings),
                 np.mean(marg_log_likelihoods))

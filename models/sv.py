@@ -37,7 +37,7 @@ class SV:
         return x_next.reshape((-1, 1))
 
     def log_g(self, x, y):
-        return stats.norm.logpdf(y, loc=0, scale=np.sqrt(self.beta**2 * np.exp(x)))
+        return stats.norm.logpdf(y, loc=0, scale=np.sqrt(self.beta**2 * np.exp(x))).squeeze()
 
     def log_f(self, x_current, x_previous):
         x_current = x_current.squeeze()
