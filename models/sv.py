@@ -27,19 +27,22 @@ class SV:
             scale = self.beta * np.exp(x[t]/2)
             y[t] = scale * np.random.normal(size=1)
 
-        return x, y
+        return x.reshape((1, -1)), y
 
     def particle_0(self, N):
-        return np.random.normal(0, self.sigma / np.sqrt(1 - self.phi ** 2), size=N)
+        return np.random.normal(0, self.sigma / np.sqrt(1 - self.phi ** 2), size=(N, 1))
 
     def propagate(self, x):
-        return self.phi * x + self.sigma * npr.normal(size=x.size)
+        x_next = self.phi * x.squeeze() + self.sigma * npr.normal(size=x.size)
+        return x_next.reshape((-1, 1))
 
     def log_g(self, x, y):
-        return stats.norm.logpdf(y, loc=0, scale=np.sqrt(self.beta**2 * np.exp(x)))
+        return stats.norm.logpdf(y, loc=0, scale=np.sqrt(self.beta**2 * np.exp(x))).squeeze()
 
     def log_f(self, x_current, x_previous):
+        x_current = x_current.squeeze()
         if x_previous is not None:
+            x_previous = x_previous.squeeze()
             log_prior = stats.norm.logpdf(x_current, self.phi * x_previous, self.sigma)
         else:
             log_prior = stats.norm.logpdf(x_current, loc=0, scale=self.sigma / np.sqrt(1 - self.phi ** 2))
